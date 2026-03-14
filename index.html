@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kosame Webapp - ระบบบรีฟงาน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body { font-family: 'Noto Sans Thai', sans-serif; }
+        .hidden { display: none; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .product-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .group:hover .product-img { transform: scale(1.05); }
+        .page-fade { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Image slider */
+        .img-slider-track {
+            display: flex;
+            transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+        }
+        .img-slide { min-width: 100%; flex-shrink: 0; }
+        .dot { transition: all 0.3s; }
+        .dot.active { background: #60a5fa; width: 18px; border-radius: 4px; }
+
+        /* Lightbox */
+        #lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(15,23,42,0.85);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        #lightbox.show { display: flex; animation: fadeIn 0.2s ease; }
+        #lightbox img {
+            max-width: 100%;
+            max-height: 85vh;
+            border-radius: 1.5rem;
+            object-fit: contain;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+        }
+        #lightbox-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            width: 40px; height: 40px;
+            background: white;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .img-clickable { cursor: zoom-in; }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-gray-800 min-h-screen pb-36 relative overflow-x-hidden max-w-md mx-auto">
+
+    <!-- Header -->
+    <header class="p-4 sticky top-0 z-30">
+        <div class="bg-white/95 backdrop-blur-md border border-white rounded-[2rem] p-4 flex justify-start items-center shadow-sm">
+            <div class="flex items-center gap-3 text-left">
+                <div class="w-2 h-8 bg-blue-400 rounded-full"></div>
+                <div class="flex flex-col">
+                    <h2 id="header-title" class="font-bold text-gray-700 text-base leading-none tracking-tight uppercase">
+                        <span id="title-text">KOSAME WEBAPP</span>
+                    </h2>
+                    <span class="text-[9px] font-bold text-yellow-500 uppercase tracking-widest mt-1 inline-block leading-none">สำหรับบรีฟงาน</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="px-6 page-fade"></main>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[65%] max-w-[280px] h-16 bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl flex items-center justify-around px-2 z-50">
+        <button onclick="showPage(1)" id="nav-1" class="w-12 h-12 flex items-center justify-center rounded-full transition-all text-blue-500 bg-blue-50 shadow-sm">
+            <i data-lucide="home" size="22"></i>
+        </button>
+        <button onclick="showPage(2)" id="nav-2" class="w-12 h-12 flex items-center justify-center rounded-full transition-all text-gray-300">
+            <i data-lucide="plus-square" size="22"></i>
+        </button>
+        <button onclick="showPage(3)" id="nav-3" class="w-12 h-12 flex items-center justify-center rounded-full transition-all text-gray-300">
+            <i data-lucide="palette" size="22"></i>
+        </button>
+    </nav>
+
+    <!-- Brief Modal -->
+    <div id="brief-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-6">
+        <div class="absolute inset-0 bg-slate-900/10 backdrop-blur-sm" onclick="closeModal('brief-modal')"></div>
+        <div class="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative z-10">
+            <div class="bg-slate-50 p-6 flex justify-between items-center border-b border-slate-100">
+                <div>
+                    <h3 class="font-bold text-gray-700 text-lg">บรีฟงานของคุณ</h3>
+                    <p id="modal-product-title" class="text-[10px] font-bold text-blue-400 uppercase tracking-widest"></p>
+                </div>
+                <button onclick="closeModal('brief-modal')" class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-gray-400 shadow-sm border border-slate-100">
+                    <i data-lucide="x" size="20"></i>
+                </button>
+            </div>
+            <div class="flex flex-col max-h-[60vh]">
+                <div class="overflow-y-auto px-8 pt-8 pb-4 flex-1">
+                    <div id="brief-form-fields" class="space-y-4"></div>
+                </div>
+                <div class="px-8 pb-8 pt-4 border-t border-slate-100">
+                    <button onclick="handleCopyBrief()" id="copy-btn" class="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 shadow-md transition-all duration-300 bg-blue-500 text-white hover:bg-blue-600 active:scale-95">
+                        <i data-lucide="copy" size="18"></i>
+                        <span id="copy-btn-text">คัดลอกข้อมูลบรีฟ</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" onclick="closeLightbox()">
+        <div id="lightbox-close"><i data-lucide="x" size="18" class="text-gray-500"></i></div>
+        <img id="lightbox-img" src="" alt="">
+    </div>
+
+    <!-- Background Blobs -->
+    <div class="fixed -top-10 -right-10 w-64 h-64 bg-blue-100/20 rounded-full blur-[80px] -z-10"></div>
+    <div class="fixed bottom-10 -left-10 w-64 h-64 bg-yellow-100/10 rounded-full blur-[80px] -z-10"></div>
+
+    <script>
+        lucide.createIcons();
+
+        // ==========================================================================
+        // ข้อมูลการ์ด — แต่ละชุดคือ 1 การ์ด
+        // วิธีเพิ่มการ์ดใหม่: ก็อปชุดด้านล่างมาต่อ แล้วแก้ข้อมูลได้เลย
+        //
+        // 💡 รูปภาพ: ใส่ได้หลายรูปใน imgs: ['url1', 'url2', ...]
+        //    ถ้ามีหลายรูปจะมีปุ่มลูกศรซ้าย/ขวาให้เลื่อน
+        //    กดที่รูปแล้วดูรูปใหญ่ได้เลย
+        //    ถ้ามีรูปเดียวใส่แค่ imgs: ['url1']
+        //    ถ้าไม่มีรูปใส่ imgs: []
+        // ==========================================================================
+
+        const newProducts = [
+
+            // ▼▼▼ การ์ดที่ 1 ▼▼▼
+            {
+                id:       'new-1',
+                isNew:    true,
+                title:    'เว็บแอพจัดการคิวสำเร็จรูป',
+                category: 'เปลี่ยนโทนสีเองได้',
+                price:    '149.-',
+                imgs:     ['https://i.ibb.co/VpV2HJCj/641270810-122164555820909793-6074073116610896141-n.jpg'],
+                desc:     '💛แยกโหมดจัดการงานสำหรับแอดมิน และโหมดผู้เยี่ยมชมให้ลูกค้าดู🩵ระบบลิงก์กับ google sheet🤍เปลี่ยนรูปโปรไฟล์/ปกเองได้ผ่านลิงก์ Google Drive💚โชว์คิววันนี้ทันที และคำนวณวันว่างให้อัตโนมัติ🤎เลือกดูได้ทั้งแบบ "รายการ" และ "ปฏิทิน"💜ขนาดพอดีมือถือ ตั้ง Icon หน้าจอหลักได้',
+                brief: [
+                    { label: 'โทนสี', placeholder: 'แจ้งโค้ดสีหรือแนบรูปกับทางแชท', type: 'input' },
+                    { label: 'ชื่อบนหัวเว็บไซต์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'ลิ์งรูปโปรไฟล์ (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'ลิ์งรูปปก (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'อิโมจิข้างกรอบงานเวลางานนั้นอยู่ในสถานะกำลังทำ', placeholder: 'แจ้งอิโมจิได้ 1-4 ตัว', type: 'input' },
+                    { label: 'ไอคอนแอพ', placeholder: 'แจ้งรูปทางแชท หากไม่ใส่เว้นว่าง', type: 'input' },
+                    { label: 'ชื่อลิงก์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 1 ▲▲▲
+
+        ];
+
+        const regularProducts = [
+
+            // ▼▼▼ การ์ดที่ 1 ▼▼▼
+            {
+                id:       1,
+                title:    'เว็บแอพจัดการคิวสำเร็จรูป',
+                category: 'มีให้เลือก 5 โทนสี',
+                price:    '99.-',
+                imgs:     ['https://i.ibb.co/PzsjF7hg/1.jpg','https://i.ibb.co/5h0mtw9W/2.jpg','https://i.ibb.co/RG1YwxzH/3.jpg','https://i.ibb.co/Q7YQ30ym/4.jpg','https://i.ibb.co/MxV6NTkv/5.jpg'],
+                desc:     '💛แยกโหมดจัดการงานสำหรับแอดมิน และโหมดผู้เยี่ยมชมให้ลูกค้าดู🩵ระบบลิงก์กับ google sheet🤍เปลี่ยนรูปโปรไฟล์/ปกเองได้ผ่านลิงก์ Google Drive💚โชว์คิววันนี้ทันที และคำนวณวันว่างให้อัตโนมัติ🤎เลือกดูได้ทั้งแบบ "รายการ" และ "ปฏิทิน"💜ขนาดพอดีมือถือ ตั้ง Icon หน้าจอหลักได้',
+                brief: [
+                    { label: 'โทนสี', type: 'select', options: ['สีชมพู', 'สีฟ้า', 'สีเหลือง', 'สีม่วง', 'สีstarlight'] },
+                    { label: 'ชื่อบนหัวเว็บไซต์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'ลิ์งรูปโปรไฟล์ (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'ลิ์งรูปปก (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'อิโมจิข้างกรอบงานเวลางานนั้นอยู่ในสถานะกำลังทำ', placeholder: 'แจ้งอิโมจิได้ 1-4 ตัว', type: 'input' },
+                    { label: 'ไอคอนแอพ', placeholder: 'แจ้งรูปทางแชท หากไม่ใส่เว้นว่าง', type: 'input' },
+                    { label: 'ชื่อลิงก์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 1 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 2 ▼▼▼
+            {
+                id:       2,
+                title:    'เว็บแอพคิวสไตล์ ayino',
+                category: 'ครบเซ็ตทุกฟังซั่น',
+                price:    '399.-',
+                imgs:     ['https://i.ibb.co/k63WJbBg/image.png'],
+                desc:     'ฟังก์ชั่นพิเศษเพิ่มเติม 🤍พกgif มาใส่ช่องความสำเร็จเองได้ 🤍มีช่องใส่รูปเพิ่ม 🤍มีช่องสรุปจำนวนคิวงานทั้งเดือน 🤍มีช่องโน๊ต และใส่ช่องทางการติดตามได้ 3 ปุ่ม 🤍เอฟเฟ็คจิ้มหน้าจอ 🤍to do ในหน้าปฎิทิน',
+                brief: [
+                    { label: 'ชื่อบนหัวเว็บไซต์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'ลิ์งรูปโปรไฟล์ (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'ลิ์งรูปปก (ลิงก์ไดร์ฟ)', placeholder: 'หากใส่เองแจ้งนำไปใส่เอง', type: 'input' },
+                    { label: 'อิโมจิข้างกรอบงานเวลางานนั้นอยู่ในสถานะกำลังทำ', placeholder: 'แจ้งอิโมจิได้ 1-4 ตัว', type: 'input' },
+                    { label: 'ไอคอนแอพ', placeholder: 'แจ้งรูปทางแชท หากไม่ใส่เว้นว่าง', type: 'input' },
+                    { label: 'ชื่อลิงก์', placeholder: 'เช่น ชื่อร้าน,ชื่อตัวเอง', type: 'input' },
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 1', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 2', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 3', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 2 ▲▲▲
+
+        ];
+
+        const services = [
+
+            // ▼▼▼ การ์ดที่ 1 ▼▼▼
+            {
+                id:       's1',
+                title:    'เพิ่มแถบเปอร์เซ็นงาน',
+                category: 'เปอร์เซ็นงานขึ้นตามสถานะ',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/hJcjtHbM/1.png'],
+                desc:     'มีเอฟเฟ็คเคลื่อนไหวเล็ก ๆ น่ารัก ๆ',
+                brief: [
+                    { label: 'สถานะงาน', placeholder: 'เช่น 1.รอคิว 2.กำลัง 3.รอเช็ค 4.ส่งงานแล้ว', type: 'textarea' },
+                    { label: 'อิโมจิปลายเปอร์เซ็นต์', placeholder: 'อิโมจิอะไรก็ได้ หรือไม่ใส่ก็ได้', type: 'input' },
+                    { label: 'สีหลอดเปอร์เซ็นต์', placeholder: '', type: 'input' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 1 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 2 ▼▼▼
+            {
+                id:       's2',
+                title:    'ฟังก์ชั่นหลอดนับเวลา',
+                category: 'เหมาะสำหรับคิวที่เป็นช่วงเวลา',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/hRcFKcbw/2.png'],
+                desc:     'หลอดนับเวลา เช่น คิวนี้มีเวลาเริ่ม-สิ้นสุด หลอดจะคำนวณเวลาออกมาเป็นนาทีละนับถอยหลังเรื่อยๆ ตามเวลาที่กำหนด',
+                brief: [
+                    { label: 'สีหลอด', placeholder: 'เช่น ชมฟู ฟ้า', type: 'input' },
+                    { label: 'อิโมจิปลายหลอด', placeholder: 'อิโมจิเล็ก ๆ ขยับได้ที่ปลายหลอดเวลา', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 2 ▲▲▲
+
+           // ▼▼▼ การ์ดที่ 3 ▼▼▼
+            {
+                id:       's3',
+                title:    'เพิ่มช่องโน๊ต และปุ่มลิงก์',
+                category: 'แก้ไขโน๊ตและลิงก์เองได้',
+                price:    '100.-',
+                imgs:     ['https://i.ibb.co/MvfxNwz/3.png'],
+                desc:     'ช่องโน๊ต และปุ่มลิงก์ช่องทางการติดต่อ จำนวน 3 ปุ่ม (สามารถเลือกอย่างใดอย่างนึงได้ว่าจะเอาช่องโน๊ตอย่างเดียวหรือปุ่มอย่างเดียว)',
+                brief: [
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 1', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 2', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'ปุ่มช่องทางการติดต่อที่ 3', placeholder: 'เช่น FB : www.facebook.com', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 3 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 4 ▼▼▼
+            {
+                id:       's4',
+                title:    'เพิ่มช่องใส่รูปขนาดใหญ่',
+                category: 'เพิ่มได้สูงสุด 2 ช่อง ต่อ 1 ครั้ง',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/ccwRZ56Y/4.png'],
+                desc:     'ช่องใส่รูปขนาดใหญ่มาก จำนวน 2 ช่อง ใส่รูปได้โดยการวางลิงก์ไดร์ฟ',
+                brief: [
+                    { label: 'จำนวนช่องที่ต้องการ', placeholder: '1 หรือ 2', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 4 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 5 ▼▼▼
+            {
+                id:       's5',
+                title:    'เพิ่มไอคอนสถานะ',
+                category: 'พกไอคอนมาเอง 50 บาท สั่งร้านทำ 150 บาท',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/DPHwjdpq/5.png'],
+                desc:     'เพิ่มไอคอนดุ๊กดิ๊กขยับได้ที่หน้าคิวงานของคุณ เพื่อความน่ารัก ดูง่าย',
+                brief: [
+                    { label: 'ลิงก์ไดร์ฟไอคอน', placeholder: 'ตั้งชื่อไฟล์เป็นสถานะ หรือ 1 2 3 4', type: 'input' },
+                    { label: 'ไอคอนที่ 1', placeholder: 'เช่น รอคิว รูปไอค่อน loading', type: 'input' },
+                    { label: 'ไอคอนที่ 2', placeholder: '', type: 'input' },
+                    { label: 'ไอคอนที่ 3', placeholder: '', type: 'input' },
+                    { label: 'ไอคอนที่ 4', placeholder: '', type: 'input' },
+                    { label: 'ไอคอนที่ 5', placeholder: '', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 6 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 6 ▼▼▼
+            {
+                id:       's6',
+                title:    'ฟังก์ชั่นปิด-เปิดร้าน',
+                category: 'ตั้งเวลาเปิด-ปิด และข้อความปิดเปิดร้านได้',
+                price:    '100.-',
+                imgs:     ['https://i.ibb.co/Y7vQQhqQ/6.png'],
+                desc:     'เมื่อเปิดร้านพื้นหลังจะเฟดมืดลงอัติโนมัติ ตั้งเวลาปิด-เปิดร้านเองได้ ตั้งข้อความปิด-เปิดร้านได้ หากไม่ใช้ออโต้โหมด สามารถกดเปิด-ปิดเองได้',
+                brief: [
+                    { label: 'เวลาปิด-เปิดร้าน', placeholder: 'ตั้งค่าเองในภายหลังได้', type: 'input' },
+                    { label: 'ข้อความเปิดร้าน', placeholder: 'เช่น เปิดร้านรับคิวค้าบบ', type: 'input' },
+                    { label: 'ข้อความปืดร้าน', placeholder: 'เช่น ปิดร้านนอนแล้วคับบ', type: 'input' },
+                    { label: 'สีที่อยากให้เปลี่ยนเมื่อปิดร้าน', placeholder: 'เช่น ขอเป็นโทนมืดทั้งหมด/ขอเฟดแค่สีพื้นหลังเล็กน้อย', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 6 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 7 ▼▼▼
+            {
+                id:       's7',
+                title:    'เอฟเฟคกดจอ',
+                category: 'เพิ่มความน่ารักขึ้นเมื่อจิ้มที่จอ',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/7NGjz8vR/7.png'],
+                desc:     'เอฟเฟคเมื่อกดจอน่ารัก ๆ อยากให้เป็นแบบไหนลองบรีฟได้เลย',
+                brief: [
+                    { label: 'รูปแบบที่ต้องการ', placeholder: 'เช่น หัวใจ หัวหมี อิโมจิ', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 7 ▲▲▲
+
+             // ▼▼▼ การ์ดที่ 8 ▼▼▼
+            {
+                id:       's8',
+                title:    'เพิ่ม To do list',
+                category: 'โน๊ตเล็ก ๆ ไว้เตือนความจำ',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/gZ644bkK/8.png'],
+                desc:     'เพิ่มโน๊ต to do list ไว้เตือนความจำ ตำแหน่งไหนก็ได้',
+                brief: [
+                    { label: 'ตำแหน่งที่ต้องการเพิ่ม', placeholder: 'เช่น แทนที่ช่องความสำเร็จ', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 8 ▲▲▲  
+            
+              // ▼▼▼ การ์ดที่ 9 ▼▼▼
+            {
+                id:       's9',
+                title:    'เพิ่มฟรีสไตล์',
+                category: 'เพิ่มฟังก์ชั่นนอกเหนือจากที่ร้านมี',
+                price:    '50.-',
+                imgs:     ['https://i.ibb.co/gMkQH6Lf/10.png'],
+                desc:     'เพิ่มฟังก์ชั่นที่ต้องการยอกเหนือจากที่ร้านมี สอบถามก่อนทุกครั้ง เริ่มต้นจุดละ 50',
+                brief: [
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 9 ▲▲▲           
+           
+
+        ];
+
+        const customWorks = [
+
+            // ▼▼▼ การ์ดที่ 1 ▼▼▼
+            {
+                id:       'c1',
+                isCustom: true,
+                title:    'ระบบแจ้งปัญหา',
+                category: 'แจ้งเตือนผ่านทางไลน์ และอีเมล',
+                price:    '500+',
+                imgs:     [],
+                desc:     '',
+                brief: [
+                    { label: 'ระบบเกี่ยวกับ', placeholder: 'เช่น แจ้งปัญหาแอพพรี', type: 'input' },
+                    { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
+                ],
+            },
+            // ▲▲▲ จบการ์ดที่ 1 ▲▲▲
+
+         
+        ];
+
+        // ==========================================================================
+        // ระบบ (ไม่ต้องแก้ไขส่วนนี้)
+        // ==========================================================================
+
+        let currentPage = 1;
+        let activeBriefFields = [];
+        let activeProductTitle = '';
+
+        // --- Lightbox ---
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').classList.add('show');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('show');
+        }
+
+        // --- Image Slider ---
+        function slideImg(cardId, dir) {
+            const track = document.getElementById('track-' + cardId);
+            const dots  = document.querySelectorAll('#dots-' + cardId + ' .dot');
+            const total = track.children.length;
+            let current = parseInt(track.dataset.current || 0);
+            current = (current + dir + total) % total;
+            track.dataset.current = current;
+            track.style.transform = 'translateX(-' + (current * 100) + '%)';
+            dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
+        }
+
+        // --- Brief Modal ---
+        function openBrief(productTitle, fields) {
+            activeProductTitle = productTitle;
+            activeBriefFields = fields || [];
+            document.getElementById('modal-product-title').innerText = productTitle;
+            const container = document.getElementById('brief-form-fields');
+            container.innerHTML = '';
+
+            activeBriefFields.forEach(function(field, index) {
+                const wrapper = document.createElement('div');
+                const label = document.createElement('label');
+                label.className = 'text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block';
+                label.innerText = field.label;
+                let input;
+                if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = 3;
+                    input.className = 'w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-5 text-sm focus:outline-none focus:border-blue-200 resize-none transition-all';
+                } else if (field.type === 'select') {
+                    input = document.createElement('select');
+                    input.className = 'w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-5 text-sm focus:outline-none focus:border-blue-200 transition-all';
+                    field.options.forEach(function(opt) {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.innerText = opt;
+                        input.appendChild(option);
+                    });
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-5 text-sm focus:outline-none focus:border-blue-200 transition-all';
+                }
+                input.id = 'dynamic-input-' + index;
+                if (field.type !== 'select') input.placeholder = field.placeholder;
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                container.appendChild(wrapper);
+            });
+
+            document.getElementById('brief-modal').classList.replace('hidden', 'flex');
+            lucide.createIcons();
+        }
+
+        function handleCopyBrief() {
+            let textToCopy = '📋 บรีฟงาน: ' + activeProductTitle + '\n';
+            activeBriefFields.forEach(function(field, index) {
+                const val = document.getElementById('dynamic-input-' + index).value || '-';
+                textToCopy += '✨ ' + field.label + ': ' + val + '\n';
+            });
+            const temp = document.createElement('textarea');
+            temp.value = textToCopy;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const btn = document.getElementById('copy-btn');
+            const btnText = document.getElementById('copy-btn-text');
+            btn.classList.replace('bg-blue-500', 'bg-green-500');
+            btnText.innerText = 'คัดลอกสำเร็จ!';
+            setTimeout(function() {
+                btn.classList.replace('bg-green-500', 'bg-blue-500');
+                btnText.innerText = 'คัดลอกข้อมูลบรีฟ';
+            }, 2000);
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.replace('flex', 'hidden');
+        }
+
+        function toggleDetails(id) {
+            document.getElementById('details-' + id).classList.toggle('hidden');
+        }
+
+        // --- Card Builder ---
+        function createCard(p) {
+            const isNew    = p.isNew    || false;
+            const isCustom = p.isCustom || false;
+            const cardTheme = isNew ? 'border-yellow-100 shadow-yellow-100/30' : 'border-blue-50 shadow-blue-100/20';
+            const imgBg     = isNew ? 'from-yellow-50 to-white' : 'from-blue-50 to-white';
+            const height    = isNew ? 'h-56' : (isCustom ? 'h-40' : 'h-32');
+            const iconSize  = isNew ? 80 : 50;
+            const iconColor = isNew ? 'text-yellow-400' : 'text-blue-400';
+            const imgs      = (p.imgs || []).filter(Boolean);
+            const briefDataStr = JSON.stringify(p.brief).replace(/"/g, '&quot;');
+
+            // --- Image area ---
+            let imgArea = '';
+            if (imgs.length === 0) {
+                imgArea = '<div class="absolute inset-0 flex items-center justify-center opacity-10 transform group-hover:scale-105 transition-transform duration-500"><i data-lucide="layout-grid" size="' + iconSize + '" class="' + iconColor + '"></i></div>';
+            } else if (imgs.length === 1) {
+                imgArea = '<img src="' + imgs[0] + '" alt="' + p.title + '" class="product-img img-clickable" onclick="openLightbox(\'' + imgs[0] + '\')" onerror="this.style.display=\'none\';">';
+            } else {
+                const slides = imgs.map(function(src) {
+                    return '<div class="img-slide ' + height + '"><img src="' + src + '" alt="" class="product-img img-clickable" onclick="openLightbox(\'' + src + '\')" onerror="this.style.display=\'none\';"></div>';
+                }).join('');
+                const dots = imgs.map(function(_, i) {
+                    return '<div class="dot w-1.5 h-1.5 rounded-full bg-blue-200 ' + (i === 0 ? 'active' : '') + '"></div>';
+                }).join('');
+                imgArea =
+                    '<div class="overflow-hidden w-full h-full absolute inset-0">' +
+                        '<div id="track-' + p.id + '" class="img-slider-track h-full" data-current="0">' + slides + '</div>' +
+                    '</div>' +
+                    '<button onclick="slideImg(\'' + p.id + '\',-1)" class="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/80 rounded-full flex items-center justify-center shadow z-10 text-gray-500"><i data-lucide="chevron-left" size="14"></i></button>' +
+                    '<button onclick="slideImg(\'' + p.id + '\',1)" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/80 rounded-full flex items-center justify-center shadow z-10 text-gray-500"><i data-lucide="chevron-right" size="14"></i></button>' +
+                    '<div id="dots-' + p.id + '" class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">' + dots + '</div>';
+            }
+
+            const priceBadge = p.price
+                ? '<div class="absolute top-3 right-3 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-white flex flex-col items-center justify-center z-10"><span class="text-[8px] font-black text-blue-300 uppercase leading-none mb-0.5">PRICE</span><span class="text-[10px] font-bold text-blue-500 leading-none">' + p.price + '</span></div>'
+                : '';
+
+            return '<div class="relative ' + (isNew ? 'w-full mb-8' : 'w-full mb-1') + '">' +
+                '<div class="bg-white rounded-[2.5rem] border-2 ' + cardTheme + ' shadow-xl overflow-hidden group transition-all">' +
+                    '<div class="relative ' + height + ' bg-gradient-to-br ' + imgBg + ' flex items-center justify-center overflow-hidden">' +
+                        (isNew ? '<div class="absolute top-4 left-4 bg-yellow-400 text-white text-[10px] font-bold px-3 py-1 rounded-xl shadow-sm z-10">NEW ARRIVAL</div>' : '') +
+                        priceBadge +
+                        imgArea +
+                    '</div>' +
+                    '<div class="' + (isNew ? 'p-6' : 'p-4') + '">' +
+                        '<h3 class="font-bold text-gray-700 leading-tight ' + (isNew ? 'text-lg' : 'text-[13px]') + '">' + p.title + '</h3>' +
+                        '<p class="text-[9px] font-bold text-blue-300 uppercase tracking-widest mb-1">' + p.category + '</p>' +
+                        (!isCustom ?
+                            '<button onclick="toggleDetails(\'' + p.id + '\')" class="w-full py-2 mt-2 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-bold transition-all bg-blue-50 text-blue-500 hover:bg-blue-100">ดูรายละเอียด <i data-lucide="chevron-down" size="12"></i></button>' +
+                            '<div id="details-' + p.id + '" class="hidden pt-3 border-t border-dashed border-gray-100 mt-3">' +
+                                '<p class="text-[11px] text-gray-500 leading-relaxed mb-4 bg-slate-50 p-3 rounded-2xl border border-white">' + (p.desc || '') + '</p>' +
+                                '<button onclick="openBrief(\'' + p.title + '\', ' + briefDataStr + ')" class="w-full py-3 rounded-2xl text-white font-bold text-[11px] shadow-md flex items-center justify-center gap-2 bg-blue-400 hover:bg-blue-500 transition-all active:scale-95"><i data-lucide="copy" size="14"></i> บรีฟงาน</button>' +
+                            '</div>'
+                        : '') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderPage() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = '';
+
+            if (currentPage === 1) {
+                container.innerHTML =
+                    '<section class="mb-8">' +
+                        '<div class="flex items-center gap-2 mb-4 px-1"><div class="w-1.5 h-4 bg-yellow-400 rounded-full"></div><h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">New Arrivals</h2></div>' +
+                        newProducts.map(function(p) { return createCard(p); }).join('') +
+                    '</section>' +
+                    '<section>' +
+                        '<div class="flex items-center justify-between mb-4 px-1"><div class="flex items-center gap-2"><div class="w-1.5 h-4 bg-blue-400 rounded-full"></div><h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Our Collection</h2></div></div>' +
+                        '<div class="grid grid-cols-2 gap-3">' + regularProducts.map(function(p) { return createCard(p); }).join('') + '</div>' +
+                    '</section>';
+            } else if (currentPage === 2) {
+                container.innerHTML =
+                    '<section>' +
+                        '<div class="flex items-center gap-2 mb-4 px-1"><div class="w-1.5 h-4 bg-blue-400 rounded-full"></div><h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Extra Functions</h2></div>' +
+                        '<div class="grid grid-cols-2 gap-3">' + services.map(function(p) { return createCard(p); }).join('') + '</div>' +
+                        '<div class="p-6 bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-[2rem] text-center mt-6 mb-8"><p class="text-[11px] font-bold text-blue-400 leading-relaxed">สามารถเพิ่มฟังก์ชั่นนอกเหนือจากนี้ได้ สามารถทักมาสอบถามกับทางตัวแทน หรือทางเราได้เลยค่ะ</p></div>' +
+                    '</section>';
+            } else if (currentPage === 3) {
+                container.innerHTML =
+                    '<section>' +
+                        '<div class="flex items-center gap-2 mb-4 px-1"><div class="w-1.5 h-4 bg-yellow-400 rounded-full"></div><h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Custom Samples</h2></div>' +
+                        '<div class="grid grid-cols-2 gap-3 mb-8">' + customWorks.map(function(p) { return createCard(p); }).join('') + '</div>' +
+                        '<div class="p-8 bg-white rounded-[2.5rem] border-2 border-yellow-50 shadow-lg shadow-yellow-50/50 text-center mb-10">' +
+                            '<div class="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="pen-tool" class="text-yellow-400" size="32"></i></div>' +
+                            '<h3 class="font-bold text-gray-700 mb-2">สนใจงานคัสตอมพิเศษ?</h3>' +
+                            '<p class="text-[11px] text-gray-400 leading-relaxed mb-6 px-4">หากต้องการสั่งเว็บหรืออกแบบตามความต้องการเฉพาะบุคคล สามารถกดปุ่มบรีฟด้านล่างเพื่อเตรียมรายละเอียดได้เลยค่ะ ✨</p>' +
+                            '<button onclick="openBrief(\'งานคัสตอมพิเศษ (Custom Work)\', customWorks[0].brief)" class="w-full py-4 bg-yellow-400 hover:bg-yellow-500 text-white font-black rounded-2xl shadow-lg shadow-yellow-100 flex items-center justify-center gap-3 transition-all active:scale-95"><i data-lucide="sparkles" size="18"></i> บรีฟงาน (Custom)</button>' +
+                        '</div>' +
+                    '</section>';
+            }
+
+            container.innerHTML +=
+                '<div class="mt-8 mb-4 p-5 bg-white border border-slate-100 rounded-[2rem] shadow-sm text-center"><p class="text-[10px] font-medium text-gray-400 leading-relaxed">สามารถเลือกเว็บที่ต้องการ กดดูรายละเอียดบรีฟงาน<br>และคัดลอกบรีฟส่งมาให้ทางเราได้เลยค่ะ</p></div>' +
+                '<div class="text-center px-8 pb-10"><p class="text-[10px] font-bold text-gray-300 leading-relaxed uppercase tracking-widest">ขอบคุณที่แวะมาชมผลงานนะคะ ✨</p></div>';
+
+            lucide.createIcons();
+        }
+
+        function showPage(n) {
+            currentPage = n;
+            document.querySelectorAll('nav button').forEach(function(btn) {
+                btn.classList.remove('text-blue-500', 'bg-blue-50', 'shadow-sm');
+                btn.classList.add('text-gray-300');
+            });
+            const activeNav = document.getElementById('nav-' + n);
+            activeNav.classList.remove('text-gray-300');
+            activeNav.classList.add('text-blue-500', 'bg-blue-50', 'shadow-sm');
+            const titles = { 1: 'KOSAME WEBAPP', 2: 'SERVICES', 3: 'CUSTOM' };
+            document.getElementById('title-text').innerText = titles[n];
+            renderPage();
+        }
+
+        renderPage();
+    </script>
+</body>
+</html>
