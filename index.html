@@ -28,6 +28,7 @@
         .img-slider-track {
             display: flex;
             transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+            user-select: none;
         }
         .img-slide { min-width: 100%; flex-shrink: 0; }
         .dot { transition: all 0.3s; }
@@ -39,19 +40,22 @@
             position: fixed;
             inset: 0;
             z-index: 200;
-            background: rgba(15,23,42,0.85);
+            background: rgba(15,23,42,0.92);
             backdrop-filter: blur(8px);
             align-items: center;
             justify-content: center;
             padding: 24px;
+            touch-action: pan-y;
         }
         #lightbox.show { display: flex; animation: fadeIn 0.2s ease; }
-        #lightbox img {
+        #lightbox-img {
             max-width: 100%;
             max-height: 85vh;
             border-radius: 1.5rem;
             object-fit: contain;
             box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+            user-select: none;
+            pointer-events: none;
         }
         #lightbox-close {
             position: absolute;
@@ -63,7 +67,46 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            z-index: 10;
         }
+        /* ปุ่มลูกศรใน Lightbox */
+        .lightbox-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px; height: 40px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .lightbox-arrow:active { background: rgba(255,255,255,0.3); }
+        #lightbox-prev { left: 12px; }
+        #lightbox-next { right: 12px; }
+        /* dot indicators ใน Lightbox */
+        #lightbox-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+        }
+        .lb-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+        .lb-dot.active { background: white; width: 18px; border-radius: 4px; }
+
         .img-clickable { cursor: zoom-in; }
     </style>
 </head>
@@ -129,9 +172,16 @@
     </div>
 
     <!-- Lightbox -->
-    <div id="lightbox" onclick="closeLightbox()">
-        <div id="lightbox-close"><i data-lucide="x" size="18" class="text-gray-500"></i></div>
+    <div id="lightbox">
+        <div id="lightbox-close" onclick="closeLightbox()"><i data-lucide="x" size="18" class="text-gray-500"></i></div>
+        <div id="lightbox-prev" class="lightbox-arrow" onclick="lightboxSlide(-1)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </div>
         <img id="lightbox-img" src="" alt="">
+        <div id="lightbox-next" class="lightbox-arrow" onclick="lightboxSlide(1)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+        <div id="lightbox-dots"></div>
     </div>
 
     <!-- Background Blobs -->
@@ -146,8 +196,8 @@
         // วิธีเพิ่มการ์ดใหม่: ก็อปชุดด้านล่างมาต่อ แล้วแก้ข้อมูลได้เลย
         //
         // 💡 รูปภาพ: ใส่ได้หลายรูปใน imgs: ['url1', 'url2', ...]
-        //    ถ้ามีหลายรูปจะมีปุ่มลูกศรซ้าย/ขวาให้เลื่อน
-        //    กดที่รูปแล้วดูรูปใหญ่ได้เลย
+        //    ถ้ามีหลายรูปจะมีปุ่มลูกศรซ้าย/ขวาให้เลื่อน (swipe บนมือถือได้ด้วย)
+        //    กดที่รูปแล้วดูรูปใหญ่ได้เลย เลื่อนซ้าย/ขวาใน lightbox ได้เลย
         //    ถ้ามีรูปเดียวใส่แค่ imgs: ['url1']
         //    ถ้าไม่มีรูปใส่ imgs: []
         // ==========================================================================
@@ -260,7 +310,7 @@
             },
             // ▲▲▲ จบการ์ดที่ 2 ▲▲▲
 
-           // ▼▼▼ การ์ดที่ 3 ▼▼▼
+            // ▼▼▼ การ์ดที่ 3 ▼▼▼
             {
                 id:       's3',
                 title:    'เพิ่มช่องโน๊ต และปุ่มลิงก์',
@@ -310,7 +360,7 @@
                     { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
                 ],
             },
-            // ▲▲▲ จบการ์ดที่ 6 ▲▲▲
+            // ▲▲▲ จบการ์ดที่ 5 ▲▲▲
 
             // ▼▼▼ การ์ดที่ 6 ▼▼▼
             {
@@ -345,7 +395,7 @@
             },
             // ▲▲▲ จบการ์ดที่ 7 ▲▲▲
 
-             // ▼▼▼ การ์ดที่ 8 ▼▼▼
+            // ▼▼▼ การ์ดที่ 8 ▼▼▼
             {
                 id:       's8',
                 title:    'เพิ่ม To do list',
@@ -358,9 +408,9 @@
                     { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
                 ],
             },
-            // ▲▲▲ จบการ์ดที่ 8 ▲▲▲  
-            
-              // ▼▼▼ การ์ดที่ 9 ▼▼▼
+            // ▲▲▲ จบการ์ดที่ 8 ▲▲▲
+
+            // ▼▼▼ การ์ดที่ 9 ▼▼▼
             {
                 id:       's9',
                 title:    'เพิ่มฟรีสไตล์',
@@ -372,8 +422,7 @@
                     { label: 'รายละเอียดเพิ่มเติม', placeholder: 'รายละเอียดบรีฟงานของคุณ...', type: 'textarea' },
                 ],
             },
-            // ▲▲▲ จบการ์ดที่ 9 ▲▲▲           
-           
+            // ▲▲▲ จบการ์ดที่ 9 ▲▲▲
 
         ];
 
@@ -395,7 +444,6 @@
             },
             // ▲▲▲ จบการ์ดที่ 1 ▲▲▲
 
-         
         ];
 
         // ==========================================================================
@@ -406,41 +454,113 @@
         let activeBriefFields = [];
         let activeProductTitle = '';
 
-        // --- Lightbox ---
-        function openLightbox(src) {
-            document.getElementById('lightbox-img').src = src;
+        // ==========================================================================
+        // Lightbox — พร้อม swipe และ เลื่อนซ้าย/ขวา
+        // ==========================================================================
+        var lbImgs = [];
+        var lbIndex = 0;
+
+        function openLightbox(imgs, index) {
+            // รองรับทั้ง openLightbox(src) และ openLightbox([...], index)
+            if (typeof imgs === 'string') { lbImgs = [imgs]; lbIndex = 0; }
+            else { lbImgs = imgs; lbIndex = index || 0; }
+
+            updateLightboxImage();
+
+            // สร้าง dots
+            var dotsEl = document.getElementById('lightbox-dots');
+            dotsEl.innerHTML = '';
+            if (lbImgs.length > 1) {
+                lbImgs.forEach(function(_, i) {
+                    var d = document.createElement('div');
+                    d.className = 'lb-dot' + (i === lbIndex ? ' active' : '');
+                    dotsEl.appendChild(d);
+                });
+            }
+
+            // ซ่อนลูกศรถ้ามีรูปเดียว
+            document.getElementById('lightbox-prev').style.display = lbImgs.length > 1 ? 'flex' : 'none';
+            document.getElementById('lightbox-next').style.display = lbImgs.length > 1 ? 'flex' : 'none';
+
             document.getElementById('lightbox').classList.add('show');
+            initLightboxSwipe();
         }
+
+        function updateLightboxImage() {
+            document.getElementById('lightbox-img').src = lbImgs[lbIndex];
+            // อัพเดท dots
+            document.querySelectorAll('#lightbox-dots .lb-dot').forEach(function(d, i) {
+                d.classList.toggle('active', i === lbIndex);
+            });
+        }
+
+        function lightboxSlide(dir) {
+            lbIndex = (lbIndex + dir + lbImgs.length) % lbImgs.length;
+            updateLightboxImage();
+        }
+
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('show');
         }
 
-        // --- Image Slider ---
+        // Swipe สำหรับ Lightbox
+        function initLightboxSwipe() {
+            var lb = document.getElementById('lightbox');
+            var startX = 0;
+            lb.ontouchstart = function(e) { startX = e.touches[0].clientX; };
+            lb.ontouchend = function(e) {
+                var diff = startX - e.changedTouches[0].clientX;
+                if (Math.abs(diff) > 50) lightboxSlide(diff > 0 ? 1 : -1);
+            };
+            // คลิก backdrop ปิด (ยกเว้นคลิกที่ปุ่มลูกศรและปุ่มปิด)
+            lb.onclick = function(e) {
+                if (e.target === lb || e.target === document.getElementById('lightbox-img')) closeLightbox();
+            };
+        }
+
+        // ==========================================================================
+        // Image Slider ในการ์ด — พร้อม touch swipe
+        // ==========================================================================
         function slideImg(cardId, dir) {
-            const track = document.getElementById('track-' + cardId);
-            const dots  = document.querySelectorAll('#dots-' + cardId + ' .dot');
-            const total = track.children.length;
-            let current = parseInt(track.dataset.current || 0);
+            var track = document.getElementById('track-' + cardId);
+            var dots  = document.querySelectorAll('#dots-' + cardId + ' .dot');
+            var total = track.children.length;
+            var current = parseInt(track.dataset.current || 0);
             current = (current + dir + total) % total;
             track.dataset.current = current;
             track.style.transform = 'translateX(-' + (current * 100) + '%)';
             dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
         }
 
-        // --- Brief Modal ---
+        function initSliderSwipe(cardId) {
+            var track = document.getElementById('track-' + cardId);
+            if (!track) return;
+            var startX = 0;
+            track.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+            track.addEventListener('touchend', function(e) {
+                var diff = startX - e.changedTouches[0].clientX;
+                if (Math.abs(diff) > 40) slideImg(cardId, diff > 0 ? 1 : -1);
+            }, { passive: true });
+        }
+
+        // ==========================================================================
+        // Brief Modal
+        // ==========================================================================
         function openBrief(productTitle, fields) {
             activeProductTitle = productTitle;
             activeBriefFields = fields || [];
             document.getElementById('modal-product-title').innerText = productTitle;
-            const container = document.getElementById('brief-form-fields');
+            var container = document.getElementById('brief-form-fields');
             container.innerHTML = '';
 
             activeBriefFields.forEach(function(field, index) {
-                const wrapper = document.createElement('div');
-                const label = document.createElement('label');
+                var wrapper = document.createElement('div');
+                var label = document.createElement('label');
                 label.className = 'text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block';
                 label.innerText = field.label;
-                let input;
+                var input;
                 if (field.type === 'textarea') {
                     input = document.createElement('textarea');
                     input.rows = 3;
@@ -449,7 +569,7 @@
                     input = document.createElement('select');
                     input.className = 'w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-5 text-sm focus:outline-none focus:border-blue-200 transition-all';
                     field.options.forEach(function(opt) {
-                        const option = document.createElement('option');
+                        var option = document.createElement('option');
                         option.value = opt;
                         option.innerText = opt;
                         input.appendChild(option);
@@ -471,20 +591,20 @@
         }
 
         function handleCopyBrief() {
-            let textToCopy = '📋 บรีฟงาน: ' + activeProductTitle + '\n';
+            var textToCopy = '📋 บรีฟงาน: ' + activeProductTitle + '\n';
             activeBriefFields.forEach(function(field, index) {
-                const val = document.getElementById('dynamic-input-' + index).value || '-';
+                var val = document.getElementById('dynamic-input-' + index).value || '-';
                 textToCopy += '✨ ' + field.label + ': ' + val + '\n';
             });
-            const temp = document.createElement('textarea');
+            var temp = document.createElement('textarea');
             temp.value = textToCopy;
             document.body.appendChild(temp);
             temp.select();
             document.execCommand('copy');
             document.body.removeChild(temp);
 
-            const btn = document.getElementById('copy-btn');
-            const btnText = document.getElementById('copy-btn-text');
+            var btn = document.getElementById('copy-btn');
+            var btnText = document.getElementById('copy-btn-text');
             btn.classList.replace('bg-blue-500', 'bg-green-500');
             btnText.innerText = 'คัดลอกสำเร็จ!';
             setTimeout(function() {
@@ -501,29 +621,33 @@
             document.getElementById('details-' + id).classList.toggle('hidden');
         }
 
-        // --- Card Builder ---
+        // ==========================================================================
+        // Card Builder
+        // ==========================================================================
         function createCard(p) {
-            const isNew    = p.isNew    || false;
-            const isCustom = p.isCustom || false;
-            const cardTheme = isNew ? 'border-yellow-100 shadow-yellow-100/30' : 'border-blue-50 shadow-blue-100/20';
-            const imgBg     = isNew ? 'from-yellow-50 to-white' : 'from-blue-50 to-white';
-            const height    = isNew ? 'h-56' : (isCustom ? 'h-40' : 'h-32');
-            const iconSize  = isNew ? 80 : 50;
-            const iconColor = isNew ? 'text-yellow-400' : 'text-blue-400';
-            const imgs      = (p.imgs || []).filter(Boolean);
-            const briefDataStr = JSON.stringify(p.brief).replace(/"/g, '&quot;');
+            var isNew    = p.isNew    || false;
+            var isCustom = p.isCustom || false;
+            var cardTheme = isNew ? 'border-yellow-100 shadow-yellow-100/30' : 'border-blue-50 shadow-blue-100/20';
+            var imgBg     = isNew ? 'from-yellow-50 to-white' : 'from-blue-50 to-white';
+            var height    = isNew ? 'h-56' : (isCustom ? 'h-40' : 'h-32');
+            var iconSize  = isNew ? 80 : 50;
+            var iconColor = isNew ? 'text-yellow-400' : 'text-blue-400';
+            var imgs      = (p.imgs || []).filter(Boolean);
+            var briefDataStr = JSON.stringify(p.brief).replace(/"/g, '&quot;');
 
-            // --- Image area ---
-            let imgArea = '';
+            // img list สำหรับส่งเข้า lightbox
+            var imgsJson = JSON.stringify(imgs).replace(/"/g, '&quot;');
+
+            var imgArea = '';
             if (imgs.length === 0) {
                 imgArea = '<div class="absolute inset-0 flex items-center justify-center opacity-10 transform group-hover:scale-105 transition-transform duration-500"><i data-lucide="layout-grid" size="' + iconSize + '" class="' + iconColor + '"></i></div>';
             } else if (imgs.length === 1) {
-                imgArea = '<img src="' + imgs[0] + '" alt="' + p.title + '" class="product-img img-clickable" onclick="openLightbox(\'' + imgs[0] + '\')" onerror="this.style.display=\'none\';">';
+                imgArea = '<img src="' + imgs[0] + '" alt="' + p.title + '" class="product-img img-clickable" onclick="openLightbox(' + imgsJson + ', 0)" onerror="this.style.display=\'none\';">';
             } else {
-                const slides = imgs.map(function(src) {
-                    return '<div class="img-slide ' + height + '"><img src="' + src + '" alt="" class="product-img img-clickable" onclick="openLightbox(\'' + src + '\')" onerror="this.style.display=\'none\';"></div>';
+                var slides = imgs.map(function(src, i) {
+                    return '<div class="img-slide ' + height + '"><img src="' + src + '" alt="" class="product-img img-clickable" onclick="openLightbox(' + imgsJson + ', ' + i + ')" onerror="this.style.display=\'none\';"></div>';
                 }).join('');
-                const dots = imgs.map(function(_, i) {
+                var dots = imgs.map(function(_, i) {
                     return '<div class="dot w-1.5 h-1.5 rounded-full bg-blue-200 ' + (i === 0 ? 'active' : '') + '"></div>';
                 }).join('');
                 imgArea =
@@ -535,7 +659,7 @@
                     '<div id="dots-' + p.id + '" class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">' + dots + '</div>';
             }
 
-            const priceBadge = p.price
+            var priceBadge = p.price
                 ? '<div class="absolute top-3 right-3 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-white flex flex-col items-center justify-center z-10"><span class="text-[8px] font-black text-blue-300 uppercase leading-none mb-0.5">PRICE</span><span class="text-[10px] font-bold text-blue-500 leading-none">' + p.price + '</span></div>'
                 : '';
 
@@ -562,7 +686,7 @@
         }
 
         function renderPage() {
-            const container = document.getElementById('main-content');
+            var container = document.getElementById('main-content');
             container.innerHTML = '';
 
             if (currentPage === 1) {
@@ -601,6 +725,14 @@
                 '<div class="text-center px-8 pb-10"><p class="text-[10px] font-bold text-gray-300 leading-relaxed uppercase tracking-widest">ขอบคุณที่แวะมาชมผลงานนะคะ ✨</p></div>';
 
             lucide.createIcons();
+
+            // เพิ่ม touch swipe ให้ทุก slider ที่มีหลายรูป
+            var allCards = [].concat(newProducts, regularProducts, services, customWorks);
+            allCards.forEach(function(p) {
+                if ((p.imgs || []).filter(Boolean).length > 1) {
+                    initSliderSwipe(p.id);
+                }
+            });
         }
 
         function showPage(n) {
@@ -609,10 +741,10 @@
                 btn.classList.remove('text-blue-500', 'bg-blue-50', 'shadow-sm');
                 btn.classList.add('text-gray-300');
             });
-            const activeNav = document.getElementById('nav-' + n);
+            var activeNav = document.getElementById('nav-' + n);
             activeNav.classList.remove('text-gray-300');
             activeNav.classList.add('text-blue-500', 'bg-blue-50', 'shadow-sm');
-            const titles = { 1: 'KOSAME WEBAPP', 2: 'SERVICES', 3: 'CUSTOM' };
+            var titles = { 1: 'KOSAME WEBAPP', 2: 'SERVICES', 3: 'CUSTOM' };
             document.getElementById('title-text').innerText = titles[n];
             renderPage();
         }
